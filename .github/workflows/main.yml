@@ -16,7 +16,6 @@ on:
 
 env:
   artifactName: ${{ contains(github.ref_name, '/') && 'artifact' || github.ref_name }}
-  qt: false
 
 jobs:
   linux_build:
@@ -41,20 +40,28 @@ jobs:
         with:
           obs: ${{ matrix.obs }}
           verbose: true
-          qt: ${{ env.qt }}
 
       - name: Build plugin
         run: |
+          set -ex
           OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
           mkdir build
           cd build
+          case ${{ matrix.obs }} in
+            28)
+              cmake_opt=(
+                -D CPACK_DEBIAN_PACKAGE_DEPENDS='obs-studio (>= 28)'
+              )
+              ;;
+          esac
           cmake .. \
             -D QT_VERSION=$OBS_QT_VERSION_MAJOR \
             -D CMAKE_INSTALL_PREFIX=/usr \
             -D CMAKE_BUILD_TYPE=RelWithDebInfo \
-            -D LINUX_PORTABLE=OFF -D CMAKE_INSTALL_LIBDIR=/usr/lib/ \
+            -D LINUX_PORTABLE=OFF \
             -D CPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON \
-            -D PKG_SUFFIX=-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-x86_64
+            -D PKG_SUFFIX=-obs${{ matrix.obs }}-${{ matrix.ubuntu }}-x86_64 \
+            "${cmake_opt[@]}"
           make -j4
           make package
           echo "FILE_NAME=$(find $PWD -name '*.deb' | head -n 1)" >> $GITHUB_ENV
@@ -68,7 +75,11 @@ jobs:
           . ci/ci_includes.generated.sh
           set -ex
           sudo apt install '${{ env.FILE_NAME }}'
-          ldd /usr/lib/obs-plugins/${PLUGIN_NAME}.so > ldd.out
+          case ${{ matrix.obs }} in
+            27) plugins_dir=/usr/lib/obs-plugins ;;
+            28) plugins_dir=/usr/lib/x86_64-linux-gnu/obs-plugins ;;
+          esac
+          ldd $plugins_dir/${PLUGIN_NAME}.so > ldd.out
           if grep not.found ldd.out ; then
             echo "Error: unresolved shared object." >&2
             exit 1
@@ -138,7 +149,6 @@ jobs:
           arch: ${{ matrix.arch }}
           obs: ${{ matrix.obs }}
           verbose: true
-          qt: ${{ env.qt }}
 
       - name: Build plugin
         run: |
@@ -192,7 +202,7 @@ jobs:
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
         run: |
           . ci/ci_includes.generated.sh
-          set -ex
+          set -e
           case ${{ matrix.obs }} in
             27)
               files=(
@@ -276,8 +286,6 @@ jobs:
         uses: norihiro/obs-studio-devel-action@v1-beta
         with:
           obs: ${{ matrix.obs }}
-          qt: ${{ env.qt }}
-
       - name: Build plugin
         run: |
           $CmakeArgs = @(
