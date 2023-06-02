@@ -14,7 +14,8 @@ def main():
         'requestType': 'shutdown',
         'requestData': {
             'reason': f'requested by {sys.argv[0]}',
-			'support_url': 'https://github.com/norihiro/obs-shutdown-plugin/issues',
+            'support_url': 'https://github.com/norihiro/obs-shutdown-plugin/issues',
+            'force': True,
         },
     })
 
