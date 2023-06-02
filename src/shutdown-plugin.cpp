@@ -23,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <obs-frontend-api.h>
 
 #include <obs-websocket-api.h>
+#include <util/config-file.h>
 #include "plugin-macros.generated.h"
 
 #define MIN_REASON 8
@@ -70,6 +71,19 @@ void obs_module_unload()
 	blog(LOG_INFO, "plugin unloaded");
 }
 
+static void revert_confirmOnExit_at_exit(enum obs_frontend_event event, void *data)
+{
+	UNUSED_PARAMETER(data);
+
+	if (event != OBS_FRONTEND_EVENT_EXIT)
+		return;
+
+	blog(LOG_INFO, "Reverting General/ConfirmOnExit to true");
+	config_set_bool(obs_frontend_get_global_config(), "General", "ConfirmOnExit", true);
+
+	obs_frontend_remove_event_callback(revert_confirmOnExit_at_exit, NULL);
+}
+
 static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_data, void *priv_data)
 {
 	UNUSED_PARAMETER(priv_data);
@@ -95,10 +109,13 @@ static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_dat
 	}
 
 	if (obs_data_get_bool(request_data, "force")) {
-		// TODO: Stop streaming
-		// TODO: Stop recording
-		// TODO: Stop virtual camera
-		// TODO: Check something else that can block shutdown
+		bool confirmOnExit = config_get_bool(obs_frontend_get_global_config(), "General", "ConfirmOnExit");
+		if (confirmOnExit) {
+			blog(LOG_INFO, "Temporarily setting General/ConfirmOnExit to false");
+			obs_frontend_add_event_callback(revert_confirmOnExit_at_exit, NULL);
+			config_set_bool(obs_frontend_get_global_config(), "General", "ConfirmOnExit", false);
+		}
+		// TODO: Remux
 	}
 
 	blog(LOG_INFO, "Shutdown obs-studio with reason: %s", reason);
