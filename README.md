@@ -1,12 +1,5 @@
 # OBS Shutdown Plugin
 
-<!-- TODO: Reconsider names
-- OBS Shutdown Plugin
-- OBS Termination Plugin
-- OBS Quitting Plugin
-- OBS Quit Plugin
--->
-
 ## Introduction
 
 This is a simple plugin for OBS Studio to shutdown OBS Studio requested by websocket.
