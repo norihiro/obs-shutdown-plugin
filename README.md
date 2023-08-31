@@ -24,6 +24,9 @@ The `request_object` should have these contents.
 
 See [example/shutdown.py](example/shutdown.py) for details.
 
+
+Note: For users on OBS 27.2, you need to install [obs-websocket 5.0.1](https://github.com/obsproject/obs-websocket/releases/tag/5.0.1).
+
 ## Build and install
 ### Linux
 Make sure `libobsConfig.cmake` is found by cmake.
