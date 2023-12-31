@@ -124,7 +124,7 @@ static inline struct obs_websocket_request_response *obs_websocket_call_request(
 
 	proc_handler_call(_ph, "call_request", &cd);
 
-	auto ret = (struct obs_websocket_request_response *)calldata_ptr(&cd, "response");
+	struct obs_websocket_request_response *ret = (struct obs_websocket_request_response *)calldata_ptr(&cd, "response");
 
 	calldata_free(&cd);
 
@@ -170,9 +170,7 @@ static inline bool obs_websocket_vendor_register_request(obs_websocket_vendor ve
 {
 	calldata_t cd = {0, 0, 0, 0};
 
-	struct obs_websocket_request_callback cb = {};
-	cb.callback = request_callback;
-	cb.priv_data = priv_data;
+	struct obs_websocket_request_callback cb = {request_callback, priv_data};
 
 	calldata_set_string(&cd, "type", request_type);
 	calldata_set_ptr(&cd, "callback", &cb);
