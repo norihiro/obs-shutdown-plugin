@@ -12,6 +12,7 @@ set(MACOS_BUNDLEID "net.nagater.obs-shutdown-plugin")
 set(ID_PREFIX "net.nagater.obs-shutdown-plugin.")
 set(MACOS_PACKAGE_UUID "EBAA5BAD-711D-45E4-A721-583791B9AB00")
 set(MACOS_INSTALLER_UUID "98C3A489-4744-48D2-94E5-A82405586247")
+set(PLUGIN_URL "https://obsproject.com/forum/resources/obs-shutdown-plugin.1725/")
 
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
