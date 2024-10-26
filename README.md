@@ -1,4 +1,4 @@
-# OBS Shutdown Plugin
+# Shutdown Plugin for OBS Studio
 
 ## Introduction
 

@@ -92,15 +92,11 @@ static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_dat
 
 	const char *reason = obs_data_get_string(request_data, "reason");
 	if (!reason || strlen(reason) < MIN_REASON) {
-		blog(LOG_ERROR, "shutdown requires reason with at least 8 characters");
+		blog(LOG_ERROR, "shutdown requires reason with at least %d characters", MIN_REASON);
 		return;
 	}
 
 	const char *support_url = obs_data_get_string(request_data, "support_url");
-	if (!support_url) {
-		blog(LOG_ERROR, "shutdown requires support_url pointing a valid URL.");
-		return;
-	}
 
 	const auto main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	if (!main_window) {
@@ -119,7 +115,9 @@ static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_dat
 	}
 
 	blog(LOG_INFO, "Shutdown obs-studio with reason: %s", reason);
-	blog(LOG_INFO, "If you need support, visit %s", support_url);
+	if (support_url && *support_url) {
+		blog(LOG_INFO, "If you need support, visit <%s>.", support_url);
+	}
 
 	QMetaObject::invokeMethod(main_window, "close", Qt::QueuedConnection);
 }
