@@ -71,17 +71,57 @@ void obs_module_unload()
 	blog(LOG_INFO, "plugin unloaded");
 }
 
-static void revert_confirmOnExit_at_exit(enum obs_frontend_event event, void *data)
+static bool can_shutdown(bool try_stop)
+{
+	bool ret = true;
+
+	if (obs_frontend_recording_active()) {
+		if (try_stop) {
+			blog(LOG_INFO, "stopping recording...");
+			obs_frontend_recording_stop();
+		}
+		ret = false;
+	}
+
+	if (obs_frontend_streaming_active()) {
+		if (try_stop) {
+			blog(LOG_INFO, "stopping streaming...");
+			obs_frontend_streaming_stop();
+		}
+		ret = false;
+	}
+
+	// TODO: Remux
+
+	return ret;
+}
+
+static void invoke_shutdown()
+{
+	const auto main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	if (!main_window) {
+		blog(LOG_ERROR, "main_window is %p", main_window);
+		return;
+	}
+
+	QMetaObject::invokeMethod(main_window, "close", Qt::QueuedConnection);
+}
+
+static void force_shutdown_cb(enum obs_frontend_event event, void *data)
 {
 	UNUSED_PARAMETER(data);
 
-	if (event != OBS_FRONTEND_EVENT_EXIT)
+	switch (event) {
+	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
+	case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
+		blog(LOG_DEBUG, "received event %d", (int)event);
+		if (can_shutdown(false))
+			invoke_shutdown();
 		return;
-
-	blog(LOG_INFO, "Reverting General/ConfirmOnExit to true");
-	config_set_bool(obs_frontend_get_global_config(), "General", "ConfirmOnExit", true);
-
-	obs_frontend_remove_event_callback(revert_confirmOnExit_at_exit, NULL);
+	case OBS_FRONTEND_EVENT_EXIT:
+		obs_frontend_remove_event_callback(force_shutdown_cb, NULL);
+		return;
+	}
 }
 
 static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_data, void *priv_data)
@@ -98,26 +138,17 @@ static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_dat
 
 	const char *support_url = obs_data_get_string(request_data, "support_url");
 
-	const auto main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
-	if (!main_window) {
-		blog(LOG_ERROR, "main_window is %p", main_window);
-		return;
-	}
-
-	if (obs_data_get_bool(request_data, "force")) {
-		bool confirmOnExit = config_get_bool(obs_frontend_get_global_config(), "General", "ConfirmOnExit");
-		if (confirmOnExit) {
-			blog(LOG_INFO, "Temporarily setting General/ConfirmOnExit to false");
-			obs_frontend_add_event_callback(revert_confirmOnExit_at_exit, NULL);
-			config_set_bool(obs_frontend_get_global_config(), "General", "ConfirmOnExit", false);
-		}
-		// TODO: Remux
-	}
-
-	blog(LOG_INFO, "Shutdown obs-studio with reason: %s", reason);
+	blog(LOG_INFO, "Shuting down obs-studio... Reason: %s", reason);
 	if (support_url && *support_url) {
 		blog(LOG_INFO, "If you need support, visit <%s>.", support_url);
 	}
 
-	QMetaObject::invokeMethod(main_window, "close", Qt::QueuedConnection);
+	if (obs_data_get_bool(request_data, "force")) {
+		if (!can_shutdown(true)) {
+			obs_frontend_add_event_callback(force_shutdown_cb, NULL);
+			return;
+		}
+	}
+
+	invoke_shutdown();
 }
