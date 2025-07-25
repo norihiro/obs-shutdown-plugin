@@ -138,7 +138,7 @@ static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_dat
 
 	const char *support_url = obs_data_get_string(request_data, "support_url");
 
-	blog(LOG_INFO, "Shuting down obs-studio... Reason: %s", reason);
+	blog(LOG_INFO, "Shutting down obs-studio... Reason: %s", reason);
 	if (support_url && *support_url) {
 		blog(LOG_INFO, "If you need support, visit <%s>.", support_url);
 	}
