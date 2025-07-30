@@ -21,9 +21,26 @@ The `request_object` should have these contents.
 | `reason` | `string` | Reason why OBS Studio need to shutdown. [Required] |
 | `support_url` | `string` | A valid URL if a user complains sudden termination of OBS Studio. [Required] |
 | `force` | `bool` | Make effort to shutdown without confirmation dialogs such as stop recording and streaming. [Optional] |
+| `exit_timeout` | `float` | Set timeout to call `exit` API. The `exit` will unsafely terminate OBS Studio. [Optional] |
+
+#### Parameters `reason` and `support_url`:
+
+To identify an unintentional shutdown of OBS Studio, the `reason` and the `support_url` should be provided to describe who makes the shtudown-request.
+
+#### Parameter `force`
+
+If set to `true`,
+the plugin will attempt to stop active services such as recording, streaming, virtual camera before requesting OBS Studio to quit.
+
+#### Parameter `exit_timeout`
+
+If OBS Studio does not quit within the specified period,
+the `exit` API will be invoked to force termination.
+
+Disabled by default. Setting 0 or negative number will disable this feature.
+The positive number specifies the timeout in seconds.
 
 See [example/shutdown.py](example/shutdown.py) for details.
-
 
 ## Build and install
 ### Linux

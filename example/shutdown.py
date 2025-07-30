@@ -16,6 +16,7 @@ def main():
             'reason': f'requested by {sys.argv[0]}',
             'support_url': 'https://github.com/norihiro/obs-shutdown-plugin/issues',
             'force': True,
+            'exit_timeout': 0.0,
         },
     })
 

@@ -19,8 +19,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <QMainWindow>
 #include <QMetaObject>
+#include <cstdlib>
+#include <thread>
 #include <obs-module.h>
 #include <obs-frontend-api.h>
+#include <util/util.hpp>
+#include <util/platform.h>
 
 #include <obs-websocket-api.h>
 #include <util/config-file.h>
@@ -107,8 +111,6 @@ static bool can_shutdown(bool try_stop)
 		ret = false;
 	}
 
-	// TODO: Remux
-
 	return ret;
 }
 
@@ -144,6 +146,27 @@ static void force_shutdown_cb(enum obs_frontend_event event, void *data)
 	}
 }
 
+#if defined(__APPLE__) || defined(__linux__)
+#define BASE_PATH ".."
+#else
+#define BASE_PATH "../.."
+#endif
+#define CONFIG_PATH BASE_PATH "/config"
+
+static void invoke_exit(void *)
+{
+	blog(LOG_INFO, "force exit.");
+
+	/* For portable mode */
+	os_unlink(CONFIG_PATH "/obs-studio/safe_mode");
+
+	/* For non-portable mode */
+	BPtr sentinelPath = os_get_config_path_ptr("obs-studio/safe_mode");
+	os_unlink(sentinelPath);
+
+	exit(0);
+}
+
 static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_data, void *priv_data)
 {
 	UNUSED_PARAMETER(priv_data);
@@ -161,6 +184,27 @@ static void shutdown_callback(obs_data_t *request_data, obs_data_t *response_dat
 	blog(LOG_INFO, "Shutting down obs-studio... Reason: %s", reason);
 	if (support_url && *support_url) {
 		blog(LOG_INFO, "If you need support, visit <%s>.", support_url);
+	}
+
+	int exit_timeout_ms = int(obs_data_get_double(request_data, "exit_timeout") * 1e3);
+	if (exit_timeout_ms > 0) {
+		blog(LOG_INFO, "will force exit in %d ms...", exit_timeout_ms);
+		std::thread(
+			[](int exit_timeout_ms) {
+				os_sleep_ms(exit_timeout_ms);
+				/* Calling `exit()` from non-UI thread causes crash with a message below.
+				 *   QObject::killTimer: Timers cannot be stopped from another thread
+				 *   QObject::~QObject: Timers cannot be stopped from another thread
+				 * At first, try to invoke `exit()` from the UI thread.
+				 * */
+				obs_queue_task(OBS_TASK_UI, invoke_exit, NULL, false);
+
+				/* If the UI thread is not responding, let's directly call `exit()` */
+				os_sleep_ms(exit_timeout_ms);
+				invoke_exit(NULL);
+			},
+			exit_timeout_ms)
+			.detach();
 	}
 
 	if (obs_data_get_bool(request_data, "force")) {
