@@ -139,6 +139,8 @@ static void force_shutdown_cb(enum obs_frontend_event event, void *data)
 	case OBS_FRONTEND_EVENT_EXIT:
 		obs_frontend_remove_event_callback(force_shutdown_cb, NULL);
 		return;
+	default:
+		break;
 	}
 }
 
