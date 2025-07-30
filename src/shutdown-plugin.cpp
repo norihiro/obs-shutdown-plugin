@@ -91,6 +91,22 @@ static bool can_shutdown(bool try_stop)
 		ret = false;
 	}
 
+	if (obs_frontend_replay_buffer_active()) {
+		if (try_stop) {
+			blog(LOG_INFO, "stopping replay-buffer...");
+			obs_frontend_replay_buffer_stop();
+		}
+		ret = false;
+	}
+
+	if (obs_frontend_virtualcam_active()) {
+		if (try_stop) {
+			blog(LOG_INFO, "stopping virtual-camera...");
+			obs_frontend_stop_virtualcam();
+		}
+		ret = false;
+	}
+
 	// TODO: Remux
 
 	return ret;
@@ -114,6 +130,8 @@ static void force_shutdown_cb(enum obs_frontend_event event, void *data)
 	switch (event) {
 	case OBS_FRONTEND_EVENT_RECORDING_STOPPED:
 	case OBS_FRONTEND_EVENT_STREAMING_STOPPED:
+	case OBS_FRONTEND_EVENT_REPLAY_BUFFER_STOPPED:
+	case OBS_FRONTEND_EVENT_VIRTUALCAM_STOPPED:
 		blog(LOG_DEBUG, "received event %d", (int)event);
 		if (can_shutdown(false))
 			invoke_shutdown();
